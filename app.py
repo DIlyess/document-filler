@@ -126,7 +126,8 @@ def main():
     excel = st.sidebar.file_uploader(
         "Uploader votre fichier excel", type=["csv", "xlsx", "xls"])
 
-    st.warning("Veuillez uploader un fichier excel pour commencer.")
+    if not excel:
+        st.warning("Veuillez uploader un fichier excel pour commencer.")
 
     if excel:
 
@@ -180,6 +181,11 @@ def main():
                     file_name=output_folder_path + ".zip",
                     mime="application/zip",
                 )
+
+        if st.button("Supprimer le dossier généré"):
+            if os.path.exists('docs'):
+                shutil.rmtree('docs')
+                print("Folder deleted")
 
 
 if __name__ == "__main__":
