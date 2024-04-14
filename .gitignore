@@ -1,0 +1,8 @@
+.streamlit
+templates
+
+#pycache files 
+__pycache__
+
+rep.csv
+rep.xlsx
