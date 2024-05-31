@@ -164,8 +164,13 @@ def main():
                 key: str(df.iloc[row_index][value]) for key, value in mappings.items()
             }
 
-            for i, file in enumerate(WordReplace.docx_list(template_folder_path)):
-                print(f"\n{i}、Processing file:{file}")
+            progress_bar = st.progress(0, text=f"Progress: 0%")
+            doc_list = WordReplace.docx_list(template_folder_path)
+            for i, file in enumerate():
+                progress_bar.progress(
+                    (i + 1) / len(WordReplace.docx_list(template_folder_path)),
+                    text=f"Document numero {i + 1}/{len(doc_list)}",
+                )
                 wordreplace = WordReplace(file)
                 wordreplace.replace_doc(mapping_dict)
                 doc = wordreplace.docx
@@ -177,9 +182,6 @@ def main():
                 path_to_save = os.path.join(output_folder_path, rel_path)
                 path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
                 doc.save(path_to_save)
-                print(
-                    f"\t☻The document processing is complete!\n Saving to {path_to_save}"
-                )
 
             shutil.make_archive(output_folder_path, "zip", output_folder_path)
 
