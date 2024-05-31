@@ -168,7 +168,7 @@ def main():
             doc_list = WordReplace.docx_list(template_folder_path)
             for i, file in enumerate(doc_list):
                 progress_bar.progress(
-                    (i + 1) / len(WordReplace.docx_list(template_folder_path)),
+                    (i + 1) / len(doc_list),
                     text=f"Document numero {i + 1}/{len(doc_list)}",
                 )
                 wordreplace = WordReplace(file)
