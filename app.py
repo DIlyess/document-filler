@@ -10,61 +10,59 @@ from Replacer import WordReplace
 
 
 mappings = {
-    '[nom_organisme]': 'nom_entreprise',
-    '[nom_responsable]': 'nom',
-    # '[adresse]': 'adresse_entreprise',
-    # '[fonction]': '',
-    # '[siret]': '',
-    # '[ape]': '',
-    # '[nda]': '',
-    # '[région]': '',
-    # '[ville_greffe]': '',
-    # '[telephone]': '',
-    # '[mail]': '',
-    # '[ville]': '',
-    # '[site_web]': '',
-    # '[date]': '',
-    # '[domaine-formation]': '',
-    # '[formateur]': '',
-    # '[nom_referent_handicap]': '',
-    # '[nom_formation]': '',
-    # '[client_entreprise]': '',
-    # '[beneficiaire_formation]': '',
-    # '[adresse_client]': '',
-    # '[nom-client]': '',
-    # '[siret_client]': '',
-    # '[fonction_client]': '',
-    # '[objectif_formation]': '',
-    # '[nombre_heures]': '',
-    # '[date_formation]': '',
-    # '[heures_formation]': '',
-    # '[lieu_formation]': '',
-    # '[prix_formation]': '',
-    # '[type_formation]': '',
-    # '[capital]': '',
-    # '[nom_associe1]': '',
-    # '[adresse_associe1]': '',
-    # '[naissance_associe1]': '',
-    # '[lieu_naissance_associe1]': '',
-    # '[nationalite_associe1]': '',
-    # '[situation_associe1]': '',
-    # '[apport_associe1]': '',
-    # '[nom_associe2]': '',
-    # '[adresse_associe2]': '',
-    # '[naissance_associe2]': '',
-    # '[lieu_naissance_associe2]': '',
-    # '[nationalite_associe2]': '',
-    # '[situation_associe2]': '',
-    # '[apport_associe2]': '',
-
+    # '[adresse_client]' : "None",
+    # '[objectif_formation]' : "None",
+    # '[beneficiaire_formation]' : "None",
+    "[telephone_stagiaire]": "Téléphone de contact du stagiaire",
+    "[code_postal]": "Code postal du stagiaire",
+    "[pays_stagiaire]": "Pays du stagiaire",
+    "[email_stagiaire]": "Email du stagiaire",
+    "[portable_stagiaire]": "Téléphone de contact du stagiaire",
+    "[ville_de_naissance]": "Ville de naissance du stagiaire",
+    "[ville_stagiaire]": "Ville du stagiaire",
+    "[pays_de_naissance]": "Pays de naissance du stagiaire",
+    "[date_de_naissance]": "Date de naissance du stagiaire",
+    "[adresse_stagiaire]": "Adresse stagiaire",
+    "[Nationalité]": "Nationalité du stagiaire",
+    "[nom_stagiaire]": "Nom stagiaire",
+    "[fonction_client]": "Fonction du responsable client",
+    "[prenom_stagiaire]": "Prénom stagiaire",
+    "[nom_organisme] ": "Nom de l'organisme",
+    "[nom_responsable]": "Nom du responsable de l'entreprise",
+    "[mail]  ": "Email de contact",
+    "[ville]": "Ville de l'organisme",
+    "[telephone] ": "Téléphone de contact",
+    "[region]  ": "Région",
+    "[adresse] ": "Adresse complète",
+    "[fonction]": "Fonction",
+    "[siret] ": "Numéro Siret",
+    "[ape] ": "Code APE",
+    "[nda] ": "Numéro NDA",
+    "[TVA] ": "Numéro TVA",
+    "[ville_greffe] ": "Nom du RCS",
+    "[site_web]": "Site Internet",
+    "[nom-client]": "Responsable du client",
+    "[domaine-formation]": "Domaine de formation",
+    "[formateur]": "Nom du formateur principal",
+    "[nom_referent_handicap] ": "Nom référent handicap",
+    "[nom_formation]": "Nom de la formation",
+    "[client_entreprise]": "Entreprise cliente bénéficiaire",
+    "[nombre_heures]": "Nombre d'heures de la formation",
+    "[date_formation]": "Date de la formation",
+    "[heures_formation]": "Horaires de la formation",
+    "[lieu_formation]": "Lieu de la formation",
+    "[prix_formation]": "Prix de la formation",
+    "[type_formation]": "Type de la formation",
+    "[siret_client]": "Siret du client",
 }
 
 
 def set_date_and_place(doc):
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
-            run.text = run.text.replace("[jour]", time.strftime("%d/%m/%Y"))
-            run.text = run.text.replace("[lieu]", 'Arles')
+            run.text = run.text.replace("[date]", time.strftime("%d/%m/%Y"))
+            run.text = run.text.replace("[date_du_jour]", time.strftime("%d/%m/%Y"))
+            run.text = run.text.replace("[Fait_a]", "Arles")
 
 
 def replace_text(doc, old_text, new_text):
@@ -124,7 +122,8 @@ def main():
     st.sidebar.title("Depot d'excel :newspaper: ")
 
     excel = st.sidebar.file_uploader(
-        "Uploader votre fichier excel", type=["csv", "xlsx", "xls"])
+        "Uploader votre fichier excel", type=["csv", "xlsx", "xls"]
+    )
 
     if not excel:
         st.warning("Veuillez uploader un fichier excel pour commencer.")
@@ -135,46 +134,56 @@ def main():
 
         st.sidebar.write(df.iloc[:, 1:].tail(7))
 
-        columns = df.columns
-        new_columns = ['timestamp', 'nom', 'mail', 'tel', 'entreprise_cree', 'nom_entreprise', 'adresse_entreprise',
-                       'rqth', 'activite_entreprise', 'capital_social', 'date_bilan', 'associes', 'sturcture_juridique', 'date_debut']
-        df.columns = new_columns + list(columns[len(new_columns):])
-
         row_index = st.number_input(
-            "Entrer l'indice de ligne prévisualisé à gauche", min_value=0, max_value=len(df)-1, step=1)
+            "Entrer l'indice de ligne prévisualisé à gauche",
+            min_value=0,
+            max_value=len(df) - 1,
+            step=1,
+        )
 
         if st.button("Preview du client"):
-            row_data = df.iloc[row_index][["nom", "mail"]]
+            row_data = df.iloc[row_index][
+                ["Nom de l'organisme", "Nom du responsable de l'entreprise"]
+            ]
             st.write(row_data)
 
         template_folder_path = "templates"
 
-        if st.button('Générer les documents') and template_folder_path:
+        if st.button("Générer les documents") and template_folder_path:
             # Create a folder to store generated documents
-            output_folder_path = f"docs/generated_documents_{time.strftime('%Y%m%d_%H%M%S')}"
-            shutil.copytree(template_folder_path, output_folder_path,
-                            ignore=shutil.ignore_patterns('*.*'))
+            output_folder_path = (
+                f"docs/generated_documents_{time.strftime('%Y%m%d_%H%M%S')}"
+            )
+            shutil.copytree(
+                template_folder_path,
+                output_folder_path,
+                ignore=shutil.ignore_patterns("*.*"),
+            )
 
-            mapping_dict = {key: df.iloc[row_index][value]
-                            for key, value in mappings.items()}
+            mapping_dict = {
+                key: str(df.iloc[row_index][value]) for key, value in mappings.items()
+            }
 
             for i, file in enumerate(WordReplace.docx_list(template_folder_path)):
+                print(f"\n{i}、Processing file:{file}")
                 wordreplace = WordReplace(file)
                 wordreplace.replace_doc(mapping_dict)
                 doc = wordreplace.docx
                 set_date_and_place(doc)
 
-                nom_prenom = df.iloc[row_index]["nom"]
+                nom_prenom = df.iloc[row_index]["Nom de l'organisme"]
                 doc_name = f"{nom_prenom}_{os.path.basename(file)}"
                 rel_path = os.path.relpath(file, template_folder_path)
                 path_to_save = os.path.join(output_folder_path, rel_path)
-                path_to_save = path_to_save.replace(
-                    os.path.basename(file), doc_name)
+                path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
                 doc.save(path_to_save)
+                print(
+                    f"\t☻The document processing is complete!\n Saving to {path_to_save}"
+                )
 
-            shutil.make_archive(output_folder_path, 'zip', output_folder_path)
+            shutil.make_archive(output_folder_path, "zip", output_folder_path)
 
-            with open(output_folder_path+'.zip', "rb") as f:
+            with open(output_folder_path + ".zip", "rb") as f:
                 st.download_button(
                     label="Télécharger le dossier des documents générés",
                     data=f,
@@ -183,8 +192,8 @@ def main():
                 )
 
         if st.button("Supprimer le dossier généré"):
-            if os.path.exists('docs'):
-                shutil.rmtree('docs')
+            if os.path.exists("docs"):
+                shutil.rmtree("docs")
                 print("Folder deleted")
 
 

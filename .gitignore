@@ -1,7 +1,9 @@
 .streamlit
-
+.DS_Store
 #pycache files 
 __pycache__
 
 rep.csv
 rep.xlsx
+Générateur dossier Qualiopi (réponses) (1).xlsx
+docs

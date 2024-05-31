@@ -12,16 +12,16 @@ import os
 
 
 class Execute:
-    '''
-        Execute Paragraphs KeyWords Replace
-        paragraph: docx paragraph
-    '''
+    """
+    Execute Paragraphs KeyWords Replace
+    paragraph: docx paragraph
+    """
 
     def __init__(self, paragraph):
         self.paragraph = paragraph
 
     def p_replace(self, x: int, key: str, value: str):
-        '''
+        """
         paragraph replace
         The reason why you do not replace the text in a paragraph directly is that it will cause the original format to
         change. Replacing the text in runs will not cause the original format to change
@@ -29,15 +29,21 @@ class Execute:
         :param key:     Keywords that need to be replaced
         :param value:   The replaced keywords
         :return:
-        '''
+        """
         # Gets the coordinate index values of all the characters in this paragraph [{run_index , char_index}]
-        p_maps = [{"run": y, "char": z} for y, run in enumerate(
-            self.paragraph.runs) for z, char in enumerate(list(run.text))]
+        p_maps = [
+            {"run": y, "char": z}
+            for y, run in enumerate(self.paragraph.runs)
+            for z, char in enumerate(list(run.text))
+        ]
         # Handle the number of times key occurs in this paragraph, and record the starting position in the list.
         # Here, while self.text.find(key) >= 0, the {"ab":"abc"} term will enter an endless loop
         # Takes a single paragraph as an independent body and gets an index list of key positions within the paragraph, or if the paragraph contains multiple keys, there are multiple index values
-        k_idx = [s for s in range(len(self.paragraph.text)) if self.paragraph.text.find(
-            key, s, len(self.paragraph.text)) == s]
+        k_idx = [
+            s
+            for s in range(len(self.paragraph.text))
+            if self.paragraph.text.find(key, s, len(self.paragraph.text)) == s
+        ]
         # Reverse order iteration
         for i, start_idx in enumerate(reversed(k_idx)):
             # The end position of the keyword in this paragraph
@@ -46,16 +52,17 @@ class Execute:
             k_maps = p_maps[start_idx:end_idx]
             self.r_replace(k_maps, value)
             print(
-                f"\t |Paragraph {x+1: >3}, object {i+1: >3} replaced successfully! | {key} ===> {value}")
+                f"\t |Paragraph {x+1: >3}, object {i+1: >3} replaced successfully! | {key} ===> {value}"
+            )
 
     def r_replace(self, k_maps: list, value: str):
-        '''
+        """
         :param k_maps: The list of indexed dictionaries containing keywords， e.g:[{"run":15, "char":3},{"run":15, "char":4},{"run":16, "char":0}]
         :param value:
         :return:
         Accept arguments, removing the characters in k_maps from back to front, leaving the first one to replace with value
         Note: Must be removed in reverse order, otherwise the list length change will cause IndedxError: string index out of range
-        '''
+        """
         for i, position in enumerate(reversed(k_maps), start=1):
             y, z = position["run"], position["char"]
             # "k_maps" may contain multiple run ids, which need to be separated
@@ -63,26 +70,26 @@ class Execute:
             # Pit: Instead of the replace() method, str is converted to list after a single word to prevent run.text from making an error in some cases (e.g., a single run contains a duplicate word)
             thisrun = list(run.text)
             if i < len(k_maps):
-                thisrun.pop(z)          # Deleting a corresponding word
+                thisrun.pop(z)  # Deleting a corresponding word
             # The last iteration (first word), that is, the number of iterations is equal to the length of k_maps
             if i == len(k_maps):
                 # Replace the word in the corresponding position with the new content
                 thisrun[z] = value
-            run.text = ''.join(thisrun)  # Recover
+            run.text = "".join(thisrun)  # Recover
 
 
 class WordReplace:
-    '''
-        file: Microsoft Office word file，only support .docx type file
-    '''
+    """
+    file: Microsoft Office word file，only support .docx type file
+    """
 
     def __init__(self, file):
         self.docx = Document(file)
 
     def body_content(self, replace_dict: dict):
         print("\t☺Processing keywords in the body...")
-        for key, value in replace_dict.items():
-            for x, paragraph in enumerate(self.docx.paragraphs):
+        for x, paragraph in enumerate(self.docx.paragraphs):
+            for key, value in replace_dict.items():
                 Execute(paragraph).p_replace(x, key, value)
         print("\t |Body keywords in the text are replaced!")
 
@@ -135,18 +142,18 @@ class WordReplace:
         print("\t |Footer'tables keywords in the text are replaced!")
 
     def save(self, filepath: str):
-        '''
+        """
         :param filepath: File saving path
         :return:
-        '''
+        """
         self.docx.save(filepath)
 
     @staticmethod
     def docx_list(dirPath):
-        '''
+        """
         :param dirPath:
         :return: List of docx files in the current directory
-        '''
+        """
         fileList = []
         for roots, dirs, files in os.walk(dirPath):
             for file in files:
@@ -154,31 +161,32 @@ class WordReplace:
                 if file.endswith("docx") and file[0] != "~":
                     fileRoot = os.path.join(roots, file)
                     fileList.append(fileRoot)
-        print("This directory finds a total of {0} related files!".format(
-            len(fileList)))
+        print(
+            "This directory finds a total of {0} related files!".format(len(fileList))
+        )
         return fileList
 
     def replace_doc(self, replace_dict: dict):
-        '''
+        """
         :param replace_dict: key:to be replaced, value:new content
         :return:
-        '''
+        """
         self.header_content(replace_dict)
-        self.header_tables(replace_dict)
         self.body_content(replace_dict)
-        self.body_tables(replace_dict)
         self.footer_content(replace_dict)
-        self.footer_tables(replace_dict)
+        # self.body_tables(replace_dict)
+        # self.header_tables(replace_dict)
+        # self.footer_tables(replace_dict)
 
         return self.docx
 
 
 def main():
-    '''
+    """
     To use: Modify the values in replace dict and filedir
     replace_dict ：key:to be replaced, value:new content
     filedir ：Directory where docx files are stored. Subdirectories are supported
-    '''
+    """
     # input section
     replace_dict = {
         "aaa": "bbb",
@@ -197,7 +205,7 @@ def main():
         wordreplace.footer_content(replace_dict)
         wordreplace.footer_tables(replace_dict)
         wordreplace.save(file)
-        print(f'\t☻The document processing is complete!\n')
+        print(f"\t☻The document processing is complete!\n")
 
 
 if __name__ == "__main__":
