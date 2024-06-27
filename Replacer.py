@@ -44,6 +44,7 @@ class Execute:
             for s in range(len(self.paragraph.text))
             if self.paragraph.text.find(key, s, len(self.paragraph.text)) == s
         ]
+
         # Reverse order iteration
         for i, start_idx in enumerate(reversed(k_idx)):
             # The end position of the keyword in this paragraph
@@ -51,9 +52,9 @@ class Execute:
             # Map Slice List A list of dictionaries for sections that contain keywords in a paragraph
             k_maps = p_maps[start_idx:end_idx]
             self.r_replace(k_maps, value)
-            print(
-                f"\t |Paragraph {x+1: >3}, object {i+1: >3} replaced successfully! | {key} ===> {value}"
-            )
+            # print(
+            #     f"\t |Paragraph {x+1: >3}, object {i+1: >3} replaced successfully! | {key} ===> {value}"
+            # )
 
     def r_replace(self, k_maps: list, value: str):
         """
@@ -87,32 +88,34 @@ class WordReplace:
         self.docx = Document(file)
 
     def body_content(self, replace_dict: dict):
-        print("\t☺Processing keywords in the body...")
+        # print("\t☺Processing keywords in the body...")
         for x, paragraph in enumerate(self.docx.paragraphs):
+            if paragraph.text == "":
+                continue
             for key, value in replace_dict.items():
                 Execute(paragraph).p_replace(x, key, value)
-        print("\t |Body keywords in the text are replaced!")
+        # print("\t |Body keywords in the text are replaced!")
 
     def body_tables(self, replace_dict: dict):
-        print("\t☺Processing keywords in the body'tables...")
+        # print("\t☺Processing keywords in the body'tables...")
         for key, value in replace_dict.items():
             for table in self.docx.tables:
                 for row in table.rows:
                     for cell in row.cells:
                         for x, paragraph in enumerate(cell.paragraphs):
                             Execute(paragraph).p_replace(x, key, value)
-        print("\t |Body'tables keywords in the text are replaced!")
+        # print("\t |Body'tables keywords in the text are replaced!")
 
     def header_content(self, replace_dict: dict):
-        print("\t☺Processing keywords in the header'body ...")
+        # print("\t☺Processing keywords in the header'body ...")
         for key, value in replace_dict.items():
             for section in self.docx.sections:
                 for x, paragraph in enumerate(section.header.paragraphs):
                     Execute(paragraph).p_replace(x, key, value)
-        print("\t |Header'body keywords in the text are replaced!")
+        # print("\t |Header'body keywords in the text are replaced!")
 
     def header_tables(self, replace_dict: dict):
-        print("\t☺Processing keywords in the header'tables ...")
+        # print("\t☺Processing keywords in the header'tables ...")
         for key, value in replace_dict.items():
             for section in self.docx.sections:
                 for table in section.header.tables:
@@ -120,18 +123,18 @@ class WordReplace:
                         for cell in row.cells:
                             for x, paragraph in enumerate(cell.paragraphs):
                                 Execute(paragraph).p_replace(x, key, value)
-        print("\t |Header'tables keywords in the text are replaced!")
+        # print("\t |Header'tables keywords in the text are replaced!")
 
     def footer_content(self, replace_dict: dict):
-        print("\t☺Processing keywords in the footer'body ...")
+        # print("\t☺Processing keywords in the footer'body ...")
         for key, value in replace_dict.items():
             for section in self.docx.sections:
                 for x, paragraph in enumerate(section.footer.paragraphs):
                     Execute(paragraph).p_replace(x, key, value)
-        print("\t |Footer'body keywords in the text are replaced!")
+        # print("\t |Footer'body keywords in the text are replaced!")
 
     def footer_tables(self, replace_dict: dict):
-        print("\t☺Processing keywords in the footer'tables ...")
+        # print("\t☺Processing keywords in the footer'tables ...")
         for key, value in replace_dict.items():
             for section in self.docx.sections:
                 for table in section.footer.tables:
@@ -139,7 +142,7 @@ class WordReplace:
                         for cell in row.cells:
                             for x, paragraph in enumerate(cell.paragraphs):
                                 Execute(paragraph).p_replace(x, key, value)
-        print("\t |Footer'tables keywords in the text are replaced!")
+        # print("\t |Footer'tables keywords in the text are replaced!")
 
     def save(self, filepath: str):
         """
@@ -161,9 +164,9 @@ class WordReplace:
                 if file.endswith("docx") and file[0] != "~":
                     fileRoot = os.path.join(roots, file)
                     fileList.append(fileRoot)
-        print(
-            "This directory finds a total of {0} related files!".format(len(fileList))
-        )
+        # print(
+        #     "This directory finds a total of {0} related files!".format(len(fileList))
+        # )
         return fileList
 
     def replace_doc(self, replace_dict: dict):
@@ -196,7 +199,7 @@ def main():
 
     # Call processing section
     for i, file in enumerate(WordReplace.docx_list(filedir), start=1):
-        print(f"{i}、Processing file:{file}")
+        # print(f"{i}、Processing file:{file}")
         wordreplace = WordReplace(file)
         wordreplace.header_content(replace_dict)
         wordreplace.header_tables(replace_dict)
@@ -205,9 +208,9 @@ def main():
         wordreplace.footer_content(replace_dict)
         wordreplace.footer_tables(replace_dict)
         wordreplace.save(file)
-        print(f"\t☻The document processing is complete!\n")
+        # print(f"\t☻The document processing is complete!\n")
 
 
 if __name__ == "__main__":
     main()
-    print("All complete!")
+    # print("All complete!")

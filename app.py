@@ -28,7 +28,7 @@ mappings = {
     "[fonction_client]": "Fonction du responsable client",
     "[prenom_stagiaire]": "Prénom stagiaire",
     "[nom_organisme] ": "Nom de l'organisme",
-    "[nom_responsable]": "Nom du responsable de l'entreprise",
+    "[nom_responsable]": "Prénom et Nom du responsable de l'organisme",
     "[mail]  ": "Email de contact",
     "[ville]": "Ville de l'organisme",
     "[telephone] ": "Téléphone de contact",
@@ -39,7 +39,7 @@ mappings = {
     "[ape] ": "Code APE",
     "[nda] ": "Numéro NDA",
     "[TVA] ": "Numéro TVA",
-    "[ville_greffe] ": "Nom du RCS",
+    "[ville_greffe] ": "Ville du RCS",
     "[site_web]": "Site Internet",
     "[nom-client]": "Responsable du client",
     "[domaine-formation]": "Domaine de formation",
@@ -54,7 +54,32 @@ mappings = {
     "[prix_formation]": "Prix de la formation",
     "[type_formation]": "Type de la formation",
     "[siret_client]": "Siret du client",
+    "[nombre_jours]": "nombre de jours de la formation",
+    "[date_formation]": "",
+    "[date_debut_contrat]": "DATE DE CRÉATION DU CONTRAT",
+    "[date_fin_contrat]": "date fin du contrat/ formation",
+    "[public_vise]": "PUBLIC VISE",
+    "[statut_juridique]": "Statut juridique OF",
+    "[delai_acces]": "Délais d’accès de la formation",
+    "[annee]": "Année",
+    "[prerequis]": "",
+    "[noms_des_stagiares]": "[NOM(S) DU/des STAGIAIRE(s)]",
+    "[Qualification-formateur]": "Qualification du formateur",
+    "[twitter]": "Twitter of",
+    "[code_postal]": "Code postal organisme de formation ",
+    "[linkedin]": "LinkedIn of",
+    "[instagram]": "Instagram of",
+    "[facebook]": "Facebook of",
+    "[effectif_stagiaires]   ": "Effectif stagiaires",
 }
+
+
+def create_mapping_dict(df):
+    # Take the first row of the data frame and create a mapping dict {df.loc[] : column_name for column_name in df.columns}
+    # Select columns where the first row is not empty
+    non_empty_columns = df.loc[0].dropna().index
+    mapping_dict = {df.loc[0][key].strip(" "): key for key in non_empty_columns}
+    return mapping_dict
 
 
 def set_date_and_place(doc):
@@ -143,22 +168,24 @@ def main():
 
         if st.button("Preview du client"):
             row_data = df.iloc[row_index][
-                ["Nom de l'organisme", "Nom du responsable de l'entreprise"]
+                ["Nom de l'organisme", "Prénom et Nom du responsable de l'organisme"]
             ]
             st.write(row_data)
 
         template_folder_path = "templates"
 
         if st.button("Générer les documents") and template_folder_path:
+            nom_organisme = df.iloc[row_index]["Nom de l'organisme"]
             # Create a folder to store generated documents
-            output_folder_path = (
-                f"docs/generated_documents_{time.strftime('%Y%m%d_%H%M%S')}"
-            )
+            output_folder_path = f"docs/{nom_organisme}_{time.strftime('%H_%M_%S')}"
+            # This code only works with one layer of subdirectories
             shutil.copytree(
                 template_folder_path,
                 output_folder_path,
-                ignore=shutil.ignore_patterns("*.*"),
+                ignore=shutil.ignore_patterns("*.docx"),
             )
+
+            mappings = create_mapping_dict(df)
 
             mapping_dict = {
                 key: str(df.iloc[row_index][value]) for key, value in mappings.items()
@@ -166,7 +193,9 @@ def main():
 
             progress_bar = st.progress(0, text=f"Progress: 0%")
             doc_list = WordReplace.docx_list(template_folder_path)
+
             for i, file in enumerate(doc_list):
+                # print(f"{i}、Processing file:{file}")
                 progress_bar.progress(
                     (i + 1) / len(doc_list),
                     text=f"Document numero {i + 1}/{len(doc_list)}",
@@ -176,8 +205,7 @@ def main():
                 doc = wordreplace.docx
                 set_date_and_place(doc)
 
-                nom_prenom = df.iloc[row_index]["Nom de l'organisme"]
-                doc_name = f"{nom_prenom}_{os.path.basename(file)}"
+                doc_name = f"{os.path.basename(file)}"
                 rel_path = os.path.relpath(file, template_folder_path)
                 path_to_save = os.path.join(output_folder_path, rel_path)
                 path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
@@ -196,7 +224,7 @@ def main():
         if st.button("Supprimer le dossier généré"):
             if os.path.exists("docs"):
                 shutil.rmtree("docs")
-                print("Folder deleted")
+                # print("Folder deleted")
 
 
 if __name__ == "__main__":
