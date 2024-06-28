@@ -15,6 +15,13 @@ def sanitize_name(name):
         return re.sub(r"[^a-zA-Z0-9]", "_", name)
 
 
+def sanitize_folder_name(name):
+    # Remove accents
+    name = unidecode.unidecode(name)
+    # Replace all non-alphanumeric characters with '_'
+    return re.sub(r"[^a-zA-Z0-9]", "_", name)
+
+
 def strip_spaces_and_sanitize_recursively(root_path):
     for dirpath, dirnames, filenames in os.walk(root_path, topdown=False):
         # Process files
@@ -27,11 +34,11 @@ def strip_spaces_and_sanitize_recursively(root_path):
 
         # Process directories
         for dirname in dirnames:
-            new_dirname = sanitize_name(dirname)
+            new_dirname = sanitize_folder_name(dirname)
             if new_dirname != dirname:
                 os.rename(
                     os.path.join(dirpath, dirname), os.path.join(dirpath, new_dirname)
                 )
 
 
-strip_spaces_and_sanitize_recursively("templates copy")
+strip_spaces_and_sanitize_recursively("templates")
