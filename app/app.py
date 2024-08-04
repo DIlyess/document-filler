@@ -5,73 +5,9 @@ import hmac
 import pandas as pd
 import streamlit as st
 from docx import Document
+from docx.shared import Inches, Pt
 
 from Replacer import WordReplace
-
-
-mappings = {
-    # '[adresse_client]' : "None",
-    # '[objectif_formation]' : "None",
-    # '[beneficiaire_formation]' : "None",
-    "[telephone_stagiaire]": "Téléphone de contact du stagiaire",
-    "[code_postal]": "Code postal du stagiaire",
-    "[pays_stagiaire]": "Pays du stagiaire",
-    "[email_stagiaire]": "Email du stagiaire",
-    "[portable_stagiaire]": "Téléphone de contact du stagiaire",
-    "[ville_de_naissance]": "Ville de naissance du stagiaire",
-    "[ville_stagiaire]": "Ville du stagiaire",
-    "[pays_de_naissance]": "Pays de naissance du stagiaire",
-    "[date_de_naissance]": "Date de naissance du stagiaire",
-    "[adresse_stagiaire]": "Adresse stagiaire",
-    "[Nationalité]": "Nationalité du stagiaire",
-    "[nom_stagiaire]": "Nom stagiaire",
-    "[fonction_client]": "Fonction du responsable client",
-    "[prenom_stagiaire]": "Prénom stagiaire",
-    "[nom_organisme] ": "Nom de l'organisme",
-    "[nom_responsable]": "Prénom et Nom du responsable de l'organisme",
-    "[mail]  ": "Email de contact",
-    "[ville]": "Ville de l'organisme",
-    "[telephone] ": "Téléphone de contact",
-    "[region]  ": "Région",
-    "[adresse] ": "Adresse complète",
-    "[fonction]": "Fonction",
-    "[siret] ": "Numéro Siret",
-    "[ape] ": "Code APE",
-    "[nda] ": "Numéro NDA",
-    "[TVA] ": "Numéro TVA",
-    "[ville_greffe] ": "Ville du RCS",
-    "[site_web]": "Site Internet",
-    "[nom-client]": "Responsable du client",
-    "[domaine-formation]": "Domaine de formation",
-    "[formateur]": "Nom du formateur principal",
-    "[nom_referent_handicap] ": "Nom référent handicap",
-    "[nom_formation]": "Nom de la formation",
-    "[client_entreprise]": "Entreprise cliente bénéficiaire",
-    "[nombre_heures]": "Nombre d'heures de la formation",
-    "[date_formation]": "Date de la formation",
-    "[heures_formation]": "Horaires de la formation",
-    "[lieu_formation]": "Lieu de la formation",
-    "[prix_formation]": "Prix de la formation",
-    "[type_formation]": "Type de la formation",
-    "[siret_client]": "Siret du client",
-    "[nombre_jours]": "nombre de jours de la formation",
-    "[date_formation]": "",
-    "[date_debut_contrat]": "DATE DE CRÉATION DU CONTRAT",
-    "[date_fin_contrat]": "date fin du contrat/ formation",
-    "[public_vise]": "PUBLIC VISE",
-    "[statut_juridique]": "Statut juridique OF",
-    "[delai_acces]": "Délais d’accès de la formation",
-    "[annee]": "Année",
-    "[prerequis]": "",
-    "[noms_des_stagiares]": "[NOM(S) DU/des STAGIAIRE(s)]",
-    "[Qualification-formateur]": "Qualification du formateur",
-    "[twitter]": "Twitter of",
-    "[code_postal]": "Code postal organisme de formation ",
-    "[linkedin]": "LinkedIn of",
-    "[instagram]": "Instagram of",
-    "[facebook]": "Facebook of",
-    "[effectif_stagiaires]   ": "Effectif stagiaires",
-}
 
 
 def create_mapping_dict(df):
@@ -94,6 +30,23 @@ def replace_text(doc, old_text, new_text):
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
             run.text = run.text.replace(old_text, new_text)
+
+
+def replace_first_image_in_header(
+    doc, new_image_path="logo.png", width_inches=1, height_inches=1
+):
+    for section in doc.sections:
+        header = section.header
+        for paragraph in header.paragraphs:
+            for run in paragraph.runs:
+                if run.element.xpath(".//a:blip"):
+                    run.clear()
+                    run.add_picture(
+                        new_image_path,
+                        width=Inches(width_inches),
+                        height=Inches(height_inches),
+                    )
+                    return
 
 
 def check_password():
@@ -150,10 +103,17 @@ def main():
         "Uploader votre fichier excel", type=["csv", "xlsx", "xls"]
     )
 
+    logo = st.sidebar.file_uploader("Uploader votre logo", type=["png", "jpg", "jpeg"])
+
     if not excel:
         st.warning("Veuillez uploader un fichier excel pour commencer.")
 
     if excel:
+
+        if logo is not None:
+            # Save the uploaded file to the current directory
+            with open("logo.png", "wb") as f:
+                f.write(logo.getvalue())
 
         df = pd.read_excel(excel)
 
@@ -204,6 +164,8 @@ def main():
                 wordreplace.replace_doc(mapping_dict)
                 doc = wordreplace.docx
                 set_date_and_place(doc)
+
+                replace_first_image_in_header(doc)
 
                 doc_name = f"{os.path.basename(file)}"
                 rel_path = os.path.relpath(file, template_folder_path)

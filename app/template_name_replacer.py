@@ -10,16 +10,22 @@ def sanitize_name(name):
     if "." in name:
         base, ext = name.rsplit(".", 1)
         base = re.sub(r"[^a-zA-Z0-9]", "_", base)
+        base = re.sub(r"_+", "_", base)
         return f"{base}.{ext}"
     else:
-        return re.sub(r"[^a-zA-Z0-9]", "_", name)
+        name = re.sub(r"[^a-zA-Z0-9]", "_", name)
+        name = re.sub(r"_+", "_", name)
+        return name
 
 
 def sanitize_folder_name(name):
     # Remove accents
     name = unidecode.unidecode(name)
     # Replace all non-alphanumeric characters with '_'
-    return re.sub(r"[^a-zA-Z0-9]", "_", name)
+    name = re.sub(r"[^a-zA-Z0-9]", "_", name)
+    # Remove duplicate underscores
+    name = re.sub(r"_+", "_", name)
+    return name
 
 
 def strip_spaces_and_sanitize_recursively(root_path):
