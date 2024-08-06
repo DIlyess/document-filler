@@ -85,15 +85,11 @@ def check_password():
     return False
 
 
-if not check_password():
-    st.stop()
-
-
 # Create the Streamlit app
 def main():
 
-    if not check_password():
-        st.stop()
+    # if not check_password():
+    #     st.stop()
 
     st.title("Générateur de dossier Qualiopi :rocket: ")
 
