@@ -161,7 +161,8 @@ def main():
                 doc = wordreplace.docx
                 set_date_and_place(doc)
 
-                replace_first_image_in_header(doc)
+                if logo is not None:
+                    replace_first_image_in_header(doc)
 
                 doc_name = f"{os.path.basename(file)}"
                 rel_path = os.path.relpath(file, template_folder_path)
