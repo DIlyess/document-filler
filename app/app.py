@@ -112,6 +112,7 @@ def main():
                 f.write(logo.getvalue())
 
         df = pd.read_excel(excel)
+        df = df.astype(str)
 
         st.sidebar.write(df.iloc[:, 1:].tail(7))
 
