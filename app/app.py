@@ -129,7 +129,10 @@ def main():
             ]
             st.write(row_data)
 
-        template_folder_path = "templates"
+        if os.path.exists("templates"):
+            template_folder_path = "templates"
+        else:
+            template_folder_path = "app/templates"
 
         if st.button("Générer les documents") and template_folder_path:
             nom_organisme = df.iloc[row_index]["Nom de l'organisme"]
