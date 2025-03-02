@@ -6,8 +6,24 @@ import pandas as pd
 import streamlit as st
 from docx import Document
 from docx.shared import Inches, Pt
+from tqdm import tqdm
 
 from Replacer import WordReplace
+
+import zipfile
+
+
+def zip_folder(folder_path, output_zip_path):
+    with zipfile.ZipFile(
+        output_zip_path, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False
+    ) as zipf:
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(
+                    file_path, folder_path
+                )  # Preserve folder structure
+                zipf.write(file_path, arcname)
 
 
 def create_mapping_dict(df):
@@ -154,7 +170,7 @@ def main():
             progress_bar = st.progress(0, text=f"Progress: 0%")
             doc_list = WordReplace.docx_list(template_folder_path)
 
-            for i, file in enumerate(doc_list):
+            for i, file in tqdm(enumerate(doc_list)):
                 # print(f"{i}、Processing file:{file}")
                 progress_bar.progress(
                     (i + 1) / len(doc_list),
@@ -174,7 +190,9 @@ def main():
                 path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
                 doc.save(path_to_save)
 
-            shutil.make_archive(output_folder_path, "zip", output_folder_path)
+            zip_folder(output_folder_path, output_folder_path + ".zip")
+
+            print(f"Documents generated ! Folder: {output_folder_path}")
 
             with open(output_folder_path + ".zip", "rb") as f:
                 st.download_button(
