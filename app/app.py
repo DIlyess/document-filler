@@ -9,6 +9,7 @@ from docx.shared import Inches, Pt
 from tqdm import tqdm
 
 from Replacer import WordReplace
+from ExcelReplacer import ExcelReplace
 
 import zipfile
 
@@ -146,15 +147,15 @@ def main():
             st.write(row_data)
 
         if os.path.exists("templates"):
-            template_folder_path = "templates"
+            template_folder_path = "templates_"
         else:
-            template_folder_path = "app/templates"
+            template_folder_path = "app/templates_"
 
         if st.button("Générer les documents") and template_folder_path:
             nom_organisme = df.iloc[row_index]["Nom de l'organisme"]
             # Create a folder to store generated documents
             output_folder_path = f"docs/{nom_organisme}_{time.strftime('%H_%M_%S')}"
-            # This code only works with one layer of subdirectories
+            # Copy template structure (now including Excel files)
             shutil.copytree(
                 template_folder_path,
                 output_folder_path,
@@ -168,27 +169,69 @@ def main():
             }
 
             progress_bar = st.progress(0, text=f"Progress: 0%")
+            
+            # Process both Word and Excel documents
             doc_list = WordReplace.docx_list(template_folder_path)
+            excel_list = ExcelReplace.excel_list(template_folder_path)
+            total_files = len(doc_list) + len(excel_list)
+            
+            file_counter = 0
 
+            # Process Word documents
             for i, file in tqdm(enumerate(doc_list)):
-                # print(f"{i}、Processing file:{file}")
+                file_counter += 1
                 progress_bar.progress(
-                    (i + 1) / len(doc_list),
-                    text=f"Document numero {i + 1}/{len(doc_list)}",
+                    file_counter / total_files,
+                    text=f"Document Word {file_counter}/{total_files}",
                 )
-                wordreplace = WordReplace(file)
-                wordreplace.replace_doc(mapping_dict)
-                doc = wordreplace.docx
-                set_date_and_place(doc)
+                try:
+                    wordreplace = WordReplace(file)
+                    wordreplace.replace_doc(mapping_dict)
+                    doc = wordreplace.docx
+                    set_date_and_place(doc)
 
-                if logo is not None:
-                    replace_first_image_in_header(doc)
+                    if logo is not None:
+                        replace_first_image_in_header(doc)
 
-                doc_name = f"{os.path.basename(file)}"
-                rel_path = os.path.relpath(file, template_folder_path)
-                path_to_save = os.path.join(output_folder_path, rel_path)
-                path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
-                doc.save(path_to_save)
+                    doc_name = f"{os.path.basename(file)}"
+                    rel_path = os.path.relpath(file, template_folder_path)
+                    path_to_save = os.path.join(output_folder_path, rel_path)
+                    path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
+                    doc.save(path_to_save)
+                except Exception as e:
+                    st.warning(f"Error processing Word file {os.path.basename(file)}: {str(e)}")
+                    # Copy the original file without processing
+                    doc_name = f"{os.path.basename(file)}"
+                    rel_path = os.path.relpath(file, template_folder_path)
+                    path_to_save = os.path.join(output_folder_path, rel_path)
+                    path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
+                    shutil.copy2(file, path_to_save)
+
+            # Process Excel documents (new feature)
+            for i, file in tqdm(enumerate(excel_list)):
+                file_counter += 1
+                progress_bar.progress(
+                    file_counter / total_files,
+                    text=f"Document Excel {file_counter}/{total_files}",
+                )
+                try:
+                    excel_replace = ExcelReplace(file)
+                    excel_replace.replace_excel(mapping_dict)
+                    excel_replace.set_date_and_place()
+                    
+                    excel_name = f"{os.path.basename(file)}"
+                    rel_path = os.path.relpath(file, template_folder_path)
+                    path_to_save = os.path.join(output_folder_path, rel_path)
+                    path_to_save = path_to_save.replace(os.path.basename(file), excel_name)
+                    excel_replace.save(path_to_save)
+                except Exception as e:
+                    st.warning(f"Error processing Excel file {os.path.basename(file)}: {str(e)}")
+                    # Copy the original file without processing
+                    excel_name = f"{os.path.basename(file)}"
+                    rel_path = os.path.relpath(file, template_folder_path)
+                    path_to_save = os.path.join(output_folder_path, rel_path)
+                    path_to_save = path_to_save.replace(os.path.basename(file), excel_name)
+                    shutil.copy2(file, path_to_save)
 
             zip_folder(output_folder_path, output_folder_path + ".zip")
 
