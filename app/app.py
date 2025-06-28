@@ -7,6 +7,8 @@ import streamlit as st
 from docx import Document
 from docx.shared import Inches, Pt
 from tqdm import tqdm
+import concurrent.futures
+import gc
 
 from Replacer import WordReplace
 from ExcelReplacer import ExcelReplace
@@ -102,6 +104,52 @@ def check_password():
     return False
 
 
+def process_word_document(args):
+    """
+    Process a single Word document - designed for parallel execution
+    """
+    file_path, mapping_dict, logo_path, template_folder_path, output_folder_path = args
+    
+    try:
+        wordreplace = WordReplace(file_path)
+        wordreplace.replace_doc(mapping_dict)
+        doc = wordreplace.docx
+        set_date_and_place(doc)
+
+        if logo_path and os.path.exists(logo_path):
+            replace_first_image_in_header(doc, logo_path)
+
+        doc_name = f"{os.path.basename(file_path)}"
+        rel_path = os.path.relpath(file_path, template_folder_path)
+        path_to_save = os.path.join(output_folder_path, rel_path)
+        path_to_save = path_to_save.replace(os.path.basename(file_path), doc_name)
+        doc.save(path_to_save)
+        return True, file_path
+    except Exception as e:
+        return False, f"Error processing {os.path.basename(file_path)}: {str(e)}"
+
+
+def process_excel_document(args):
+    """
+    Process a single Excel document - designed for parallel execution
+    """
+    file_path, mapping_dict, template_folder_path, output_folder_path = args
+    
+    try:
+        excel_replace = ExcelReplace(file_path)
+        excel_replace.replace_excel(mapping_dict)
+        excel_replace.set_date_and_place()
+        
+        excel_name = f"{os.path.basename(file_path)}"
+        rel_path = os.path.relpath(file_path, template_folder_path)
+        path_to_save = os.path.join(output_folder_path, rel_path)
+        path_to_save = path_to_save.replace(os.path.basename(file_path), excel_name)
+        excel_replace.save(path_to_save)
+        return True, file_path
+    except Exception as e:
+        return False, f"Error processing {os.path.basename(file_path)}: {str(e)}"
+
+
 # Create the Streamlit app
 def main():
 
@@ -117,6 +165,11 @@ def main():
     )
 
     logo = st.sidebar.file_uploader("Uploader votre logo", type=["png", "jpg", "jpeg"])
+
+    # Performance configuration
+    st.sidebar.title("Configuration Performance :gear:")
+    use_parallel = st.sidebar.checkbox("Utiliser le traitement parallèle", value=True, help="Active le traitement parallèle pour améliorer les performances")
+    max_workers = st.sidebar.slider("Nombre de workers parallèles", min_value=1, max_value=8, value=4, help="Nombre de documents traités simultanément")
 
     if not excel:
         st.warning("Veuillez uploader un fichier excel pour commencer.")
@@ -147,11 +200,13 @@ def main():
             st.write(row_data)
 
         if os.path.exists("templates"):
-            template_folder_path = "templates_"
+            template_folder_path = "templates"
         else:
-            template_folder_path = "app/templates_"
+            template_folder_path = "app/templates"
 
         if st.button("Générer les documents") and template_folder_path:
+            start_time = time.time()
+            
             nom_organisme = df.iloc[row_index]["Nom de l'organisme"]
             # Create a folder to store generated documents
             output_folder_path = f"docs/{nom_organisme}_{time.strftime('%H_%M_%S')}"
@@ -175,67 +230,79 @@ def main():
             excel_list = ExcelReplace.excel_list(template_folder_path)
             total_files = len(doc_list) + len(excel_list)
             
+            st.info(f"Traitement de {len(doc_list)} documents Word et {len(excel_list)} documents Excel")
+            
             file_counter = 0
 
             # Process Word documents
-            for i, file in tqdm(enumerate(doc_list)):
-                file_counter += 1
-                progress_bar.progress(
-                    file_counter / total_files,
-                    text=f"Document Word {file_counter}/{total_files}",
-                )
-                try:
-                    wordreplace = WordReplace(file)
-                    wordreplace.replace_doc(mapping_dict)
-                    doc = wordreplace.docx
-                    set_date_and_place(doc)
-
-                    if logo is not None:
-                        replace_first_image_in_header(doc)
-
-                    doc_name = f"{os.path.basename(file)}"
-                    rel_path = os.path.relpath(file, template_folder_path)
-                    path_to_save = os.path.join(output_folder_path, rel_path)
-                    path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
-                    doc.save(path_to_save)
-                except Exception as e:
-                    st.warning(f"Error processing Word file {os.path.basename(file)}: {str(e)}")
-                    # Copy the original file without processing
-                    doc_name = f"{os.path.basename(file)}"
-                    rel_path = os.path.relpath(file, template_folder_path)
-                    path_to_save = os.path.join(output_folder_path, rel_path)
-                    path_to_save = path_to_save.replace(os.path.basename(file), doc_name)
-                    shutil.copy2(file, path_to_save)
+            if use_parallel and len(doc_list) > 1:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = [
+                        executor.submit(process_word_document, (file, mapping_dict, "logo.png" if logo is not None else None, template_folder_path, output_folder_path))
+                        for file in doc_list
+                    ]
+                    for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+                        file_counter += 1
+                        progress_bar.progress(
+                            file_counter / total_files,
+                            text=f"Document Word {file_counter}/{total_files}",
+                        )
+                        success, result = future.result()
+                        if not success:
+                            st.warning(result)  # result contains the error message
+                        # Force garbage collection to free memory
+                        gc.collect()
+            else:
+                # Sequential processing for small document sets or when parallel is disabled
+                for i, file in tqdm(enumerate(doc_list)):
+                    file_counter += 1
+                    progress_bar.progress(
+                        file_counter / total_files,
+                        text=f"Document Word {file_counter}/{total_files}",
+                    )
+                    success, result = process_word_document((file, mapping_dict, "logo.png" if logo is not None else None, template_folder_path, output_folder_path))
+                    if not success:
+                        st.warning(result)
+                    gc.collect()
 
             # Process Excel documents (new feature)
-            for i, file in tqdm(enumerate(excel_list)):
-                file_counter += 1
-                progress_bar.progress(
-                    file_counter / total_files,
-                    text=f"Document Excel {file_counter}/{total_files}",
-                )
-                try:
-                    excel_replace = ExcelReplace(file)
-                    excel_replace.replace_excel(mapping_dict)
-                    excel_replace.set_date_and_place()
-                    
-                    excel_name = f"{os.path.basename(file)}"
-                    rel_path = os.path.relpath(file, template_folder_path)
-                    path_to_save = os.path.join(output_folder_path, rel_path)
-                    path_to_save = path_to_save.replace(os.path.basename(file), excel_name)
-                    excel_replace.save(path_to_save)
-                except Exception as e:
-                    st.warning(f"Error processing Excel file {os.path.basename(file)}: {str(e)}")
-                    # Copy the original file without processing
-                    excel_name = f"{os.path.basename(file)}"
-                    rel_path = os.path.relpath(file, template_folder_path)
-                    path_to_save = os.path.join(output_folder_path, rel_path)
-                    path_to_save = path_to_save.replace(os.path.basename(file), excel_name)
-                    shutil.copy2(file, path_to_save)
+            if use_parallel and len(excel_list) > 1:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = [
+                        executor.submit(process_excel_document, (file, mapping_dict, template_folder_path, output_folder_path))
+                        for file in excel_list
+                    ]
+                    for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+                        file_counter += 1
+                        progress_bar.progress(
+                            file_counter / total_files,
+                            text=f"Document Excel {file_counter}/{total_files}",
+                        )
+                        success, result = future.result()
+                        if not success:
+                            st.warning(result)  # result contains the error message
+                        # Force garbage collection to free memory
+                        gc.collect()
+            else:
+                # Sequential processing for small document sets or when parallel is disabled
+                for i, file in tqdm(enumerate(excel_list)):
+                    file_counter += 1
+                    progress_bar.progress(
+                        file_counter / total_files,
+                        text=f"Document Excel {file_counter}/{total_files}",
+                    )
+                    success, result = process_excel_document((file, mapping_dict, template_folder_path, output_folder_path))
+                    if not success:
+                        st.warning(result)
+                    gc.collect()
 
             zip_folder(output_folder_path, output_folder_path + ".zip")
 
-            print(f"Documents generated ! Folder: {output_folder_path}")
+            end_time = time.time()
+            processing_time = end_time - start_time
+            
+            st.success(f"Documents générés en {processing_time:.2f} secondes ! Dossier: {output_folder_path}")
+            st.info(f"Performance: {total_files/processing_time:.2f} documents/seconde")
 
             with open(output_folder_path + ".zip", "rb") as f:
                 st.download_button(

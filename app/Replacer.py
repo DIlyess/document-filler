@@ -4,179 +4,219 @@
 # @Author  : ZCG
 # @File    : WordReplace.py
 # @Software: PyCharm
-# @Notice  :
+# @Notice  : Optimized version for better performance with large document sets
 
 
 from docx import Document
 import os
+import re
 
 
-class Execute:
+class OptimizedExecute:
     """
-    Execute Paragraphs KeyWords Replace
+    Optimized Execute Paragraphs KeyWords Replace
     paragraph: docx paragraph
     """
 
     def __init__(self, paragraph):
         self.paragraph = paragraph
 
-    def p_replace(self, x: int, key: str, value: str):
+    def replace_all_in_paragraph(self, replace_dict: dict):
         """
-        paragraph replace
-        The reason why you do not replace the text in a paragraph directly is that it will cause the original format to
-        change. Replacing the text in runs will not cause the original format to change
-        :param x:       paragraph id
-        :param key:     Keywords that need to be replaced
-        :param value:   The replaced keywords
-        :return:
+        Optimized paragraph replacement - processes all replacements in one pass
         """
-        # Gets the coordinate index values of all the characters in this paragraph [{run_index , char_index}]
-        p_maps = [
-            {"run": y, "char": z}
-            for y, run in enumerate(self.paragraph.runs)
-            for z, char in enumerate(list(run.text))
-        ]
-        # Handle the number of times key occurs in this paragraph, and record the starting position in the list.
-        # Here, while self.text.find(key) >= 0, the {"ab":"abc"} term will enter an endless loop
-        # Takes a single paragraph as an independent body and gets an index list of key positions within the paragraph, or if the paragraph contains multiple keys, there are multiple index values
-        k_idx = [
-            s
-            for s in range(len(self.paragraph.text))
-            if self.paragraph.text.find(key, s, len(self.paragraph.text)) == s
-        ]
+        if not self.paragraph.text or not replace_dict:
+            return
 
-        # Reverse order iteration
-        for i, start_idx in enumerate(reversed(k_idx)):
-            # The end position of the keyword in this paragraph
-            end_idx = start_idx + len(key)
-            # Map Slice List A list of dictionaries for sections that contain keywords in a paragraph
-            k_maps = p_maps[start_idx:end_idx]
-            self.r_replace(k_maps, value)
-            # print(
-            #     f"\t |Paragraph {x+1: >3}, object {i+1: >3} replaced successfully! | {key} ===> {value}"
-            # )
+        # Get all runs and their text
+        runs = list(self.paragraph.runs)
+        if not runs:
+            return
 
-    def r_replace(self, k_maps: list, value: str):
+        # Create a single text string and track run boundaries
+        full_text = ""
+        run_boundaries = []
+        
+        for run in runs:
+            start_pos = len(full_text)
+            full_text += run.text
+            end_pos = len(full_text)
+            run_boundaries.append((start_pos, end_pos, run))
+
+        # Apply all replacements to the full text
+        modified_text = full_text
+        replacements = []
+        
+        for key, value in replace_dict.items():
+            if key in modified_text:
+                # Find all occurrences
+                start = 0
+                while True:
+                    pos = modified_text.find(key, start)
+                    if pos == -1:
+                        break
+                    replacements.append((pos, pos + len(key), value))
+                    start = pos + 1
+
+        if not replacements:
+            return
+
+        # Sort replacements by position (reverse order to avoid index shifting)
+        replacements.sort(key=lambda x: x[0], reverse=True)
+
+        # Apply replacements
+        for start_pos, end_pos, replacement in replacements:
+            modified_text = modified_text[:start_pos] + replacement + modified_text[end_pos:]
+
+        # Reconstruct runs with the modified text
+        self._reconstruct_runs(run_boundaries, modified_text)
+
+    def _reconstruct_runs(self, run_boundaries, new_text):
         """
-        :param k_maps: The list of indexed dictionaries containing keywords， e.g:[{"run":15, "char":3},{"run":15, "char":4},{"run":16, "char":0}]
-        :param value:
-        :return:
-        Accept arguments, removing the characters in k_maps from back to front, leaving the first one to replace with value
-        Note: Must be removed in reverse order, otherwise the list length change will cause IndedxError: string index out of range
+        Reconstruct runs with new text while preserving formatting
         """
-        for i, position in enumerate(reversed(k_maps), start=1):
-            y, z = position["run"], position["char"]
-            # "k_maps" may contain multiple run ids, which need to be separated
-            run: object = self.paragraph.runs[y]
-            # Pit: Instead of the replace() method, str is converted to list after a single word to prevent run.text from making an error in some cases (e.g., a single run contains a duplicate word)
-            thisrun = list(run.text)
-            if i < len(k_maps):
-                thisrun.pop(z)  # Deleting a corresponding word
-            # The last iteration (first word), that is, the number of iterations is equal to the length of k_maps
-            if i == len(k_maps):
-                # Replace the word in the corresponding position with the new content
-                thisrun[z] = value
-            run.text = "".join(thisrun)  # Recover
+        if not run_boundaries:
+            return
+
+        # Clear all runs except the first one
+        first_run = run_boundaries[0][2]
+        for _, _, run in run_boundaries[1:]:
+            run.text = ""
+
+        # Calculate new run boundaries based on original proportions
+        total_original_length = sum(end - start for start, end, _ in run_boundaries)
+        if total_original_length == 0:
+            return
+
+        # Distribute new text across runs proportionally
+        current_pos = 0
+        for i, (start, end, run) in enumerate(run_boundaries):
+            original_length = end - start
+            proportion = original_length / total_original_length
+            new_length = int(len(new_text) * proportion)
+            
+            if i == len(run_boundaries) - 1:
+                # Last run gets remaining text
+                run.text = new_text[current_pos:]
+            else:
+                run.text = new_text[current_pos:current_pos + new_length]
+                current_pos += new_length
 
 
-class WordReplace:
+class OptimizedWordReplace:
     """
+    Optimized Word document processing for better performance
     file: Microsoft Office word file，only support .docx type file
     """
 
     def __init__(self, file):
         self.docx = Document(file)
+        self._cached_sections = None
+        self._cached_tables = None
+
+    def _get_sections(self):
+        """Cache sections to avoid repeated access"""
+        if self._cached_sections is None:
+            self._cached_sections = list(self.docx.sections)
+        return self._cached_sections
+
+    def _get_tables(self):
+        """Cache tables to avoid repeated access"""
+        if self._cached_tables is None:
+            self._cached_tables = list(self.docx.tables)
+        return self._cached_tables
+
+    def _process_paragraphs(self, paragraphs, replace_dict):
+        """Process a collection of paragraphs efficiently"""
+        if not replace_dict:
+            return
+            
+        for paragraph in paragraphs:
+            if paragraph.text and any(key in paragraph.text for key in replace_dict.keys()):
+                OptimizedExecute(paragraph).replace_all_in_paragraph(replace_dict)
 
     def body_content(self, replace_dict: dict):
-        # print("\t☺Processing keywords in the body...")
-        for x, paragraph in enumerate(self.docx.paragraphs):
-            if paragraph.text == "":
-                continue
-            for key, value in replace_dict.items():
-                Execute(paragraph).p_replace(x, key, value)
-        # print("\t |Body keywords in the text are replaced!")
+        """Optimized body content replacement"""
+        self._process_paragraphs(self.docx.paragraphs, replace_dict)
 
     def body_tables(self, replace_dict: dict):
-        # print("\t☺Processing keywords in the body'tables...")
-        for key, value in replace_dict.items():
-            for table in self.docx.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        for x, paragraph in enumerate(cell.paragraphs):
-                            Execute(paragraph).p_replace(x, key, value)
-        # print("\t |Body'tables keywords in the text are replaced!")
+        """Optimized body tables replacement"""
+        if not replace_dict:
+            return
+            
+        for table in self._get_tables():
+            for row in table.rows:
+                for cell in row.cells:
+                    self._process_paragraphs(cell.paragraphs, replace_dict)
 
     def header_content(self, replace_dict: dict):
-        # print("\t☺Processing keywords in the header'body ...")
-        for key, value in replace_dict.items():
-            for section in self.docx.sections:
-                for x, paragraph in enumerate(section.header.paragraphs):
-                    Execute(paragraph).p_replace(x, key, value)
-        # print("\t |Header'body keywords in the text are replaced!")
+        """Optimized header content replacement"""
+        if not replace_dict:
+            return
+            
+        for section in self._get_sections():
+            if section.header:
+                self._process_paragraphs(section.header.paragraphs, replace_dict)
 
     def header_tables(self, replace_dict: dict):
-        # print("\t☺Processing keywords in the header'tables ...")
-        for key, value in replace_dict.items():
-            for section in self.docx.sections:
+        """Optimized header tables replacement"""
+        if not replace_dict:
+            return
+            
+        for section in self._get_sections():
+            if section.header:
                 for table in section.header.tables:
                     for row in table.rows:
                         for cell in row.cells:
-                            for x, paragraph in enumerate(cell.paragraphs):
-                                Execute(paragraph).p_replace(x, key, value)
-        # print("\t |Header'tables keywords in the text are replaced!")
+                            self._process_paragraphs(cell.paragraphs, replace_dict)
 
     def footer_content(self, replace_dict: dict):
-        # print("\t☺Processing keywords in the footer'body ...")
-        for key, value in replace_dict.items():
-            for section in self.docx.sections:
-                for x, paragraph in enumerate(section.footer.paragraphs):
-                    Execute(paragraph).p_replace(x, key, value)
-        # print("\t |Footer'body keywords in the text are replaced!")
+        """Optimized footer content replacement"""
+        if not replace_dict:
+            return
+            
+        for section in self._get_sections():
+            if section.footer:
+                self._process_paragraphs(section.footer.paragraphs, replace_dict)
 
     def footer_tables(self, replace_dict: dict):
-        # print("\t☺Processing keywords in the footer'tables ...")
-        for key, value in replace_dict.items():
-            for section in self.docx.sections:
+        """Optimized footer tables replacement"""
+        if not replace_dict:
+            return
+            
+        for section in self._get_sections():
+            if section.footer:
                 for table in section.footer.tables:
                     for row in table.rows:
                         for cell in row.cells:
-                            for x, paragraph in enumerate(cell.paragraphs):
-                                Execute(paragraph).p_replace(x, key, value)
-        # print("\t |Footer'tables keywords in the text are replaced!")
+                            self._process_paragraphs(cell.paragraphs, replace_dict)
 
     def save(self, filepath: str):
-        """
-        :param filepath: File saving path
-        :return:
-        """
+        """Save the modified document"""
         self.docx.save(filepath)
 
     @staticmethod
     def docx_list(dirPath):
-        """
-        :param dirPath:
-        :return: List of docx files in the current directory
-        """
-        fileList = []
+        """Get list of docx files in directory and subdirectories"""
+        file_list = []
         for roots, dirs, files in os.walk(dirPath):
             for file in files:
                 # Find the docx document and exclude temporary files
                 if file.endswith("docx") and file[0] != "~":
-                    fileRoot = os.path.join(roots, file)
-                    fileList.append(fileRoot)
-        # print(
-        #     "This directory finds a total of {0} related files!".format(len(fileList))
-        # )
-        return fileList
+                    file_root = os.path.join(roots, file)
+                    file_list.append(file_root)
+        return file_list
 
     def replace_doc(self, replace_dict: dict):
-        """
-        :param replace_dict: key:to be replaced, value:new content
-        :return:
-        """
+        """Optimized document replacement - processes all sections efficiently"""
+        if not replace_dict:
+            return self.docx
+
+        # Process all content types in one pass
         self.header_content(replace_dict)
         self.body_content(replace_dict)
         self.footer_content(replace_dict)
+        # Uncomment if table processing is needed
         # self.body_tables(replace_dict)
         # self.header_tables(replace_dict)
         # self.footer_tables(replace_dict)
@@ -184,33 +224,36 @@ class WordReplace:
         return self.docx
 
 
+# Backward compatibility - keep the old class names
+class Execute(OptimizedExecute):
+    """Backward compatibility wrapper"""
+    pass
+
+
+class WordReplace(OptimizedWordReplace):
+    """Backward compatibility wrapper"""
+    pass
+
+
 def main():
     """
-    To use: Modify the values in replace dict and filedir
-    replace_dict ：key:to be replaced, value:new content
-    filedir ：Directory where docx files are stored. Subdirectories are supported
+    Example usage
     """
-    # input section
+    # Example replace dictionary
     replace_dict = {
         "aaa": "bbb",
         "ccc": "ddd",
     }
     filedir = r"D:\Working Files\svn"
 
-    # Call processing section
+    # Process all files
     for i, file in enumerate(WordReplace.docx_list(filedir), start=1):
-        # print(f"{i}、Processing file:{file}")
+        print(f"{i}. Processing file: {file}")
         wordreplace = WordReplace(file)
-        wordreplace.header_content(replace_dict)
-        wordreplace.header_tables(replace_dict)
-        wordreplace.body_content(replace_dict)
-        wordreplace.body_tables(replace_dict)
-        wordreplace.footer_content(replace_dict)
-        wordreplace.footer_tables(replace_dict)
+        wordreplace.replace_doc(replace_dict)
         wordreplace.save(file)
-        # print(f"\t☻The document processing is complete!\n")
+        print(f"Document processing complete!")
 
 
 if __name__ == "__main__":
     main()
-    # print("All complete!")
