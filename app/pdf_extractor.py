@@ -12,23 +12,61 @@ class PDFExtractor:
     def __init__(self):
         # Dictionary mapping keywords to field descriptions
         self.extraction_fields = {
-            "convention": "Numéro de convention",
-            "date_signature": "Date de signature",
-            "date_debut": "Date de début",
-            "date_fin": "Date de fin",
-            "organisme": "Nom de l'organisme",
-            "responsable": "Responsable de l'organisme",
-            "adresse": "Adresse de l'organisme",
-            "telephone": "Téléphone",
-            "email": "Email",
-            "montant": "Montant de la convention",
-            "devise": "Devise",
-            "objectif": "Objectif de la convention",
-            "partenaire": "Partenaire",
-            "signataire": "Signataire",
-            "reference": "Référence",
-            "type": "Type de convention",
-            "statut": "Statut de la convention"
+            "L'organisme de formation": "Nom de l'organisme",
+            "Représentée par": "Prénom et Nom du responsable de l'organisme",
+            "Email": "Email de votre organisme de formation",
+            "Tel : ": "Téléphone de contact",
+            "Siège social au : ": "Ville de l'organisme",
+            "": "Région",
+            "Siège social au : ": "Adresse (N° + Nom de la rue + code postal + ville)",
+            "Représentée par ": "Fonction du dirigeant de l'organisme",
+            "Siret : ": "Numéro Siret",
+            "": "Code APE",
+            "": "Numéro NDA Si vous n'avez pas encore votre NDA mettre la mention  NDA en cours d'enregistrement",
+            "- TVA : ": "Numéro TVA Si vous n'êtes pas soumis à TVA mettre xxx",
+            "- RCS": "Ville du RCS (Registre du commerce dont dépend votre structure)",
+            "": "Site Internet (Mettre le lien direct)",
+            "- Intitulé de l’action :": "Nom de la formation",
+            "": "Domaine de formation",
+            "- Formateur :": "Nom du formateur principal",
+            "": "Nom référent handicap (le dirigeant est souvent le réfèrent handicap)",
+            "Dates et horaires : ": "Horaires de la formation",
+            "Durée de l’action de formation :": "Nombre d'heures de la formation (Indiquez que le chiffre)",
+            "Lieu : ": "Lieu de la formation",
+            "Dates et horaires : ": "Date début de la formation",
+            "": "Nombre de participants",
+            "TOTAL GENERAL :": "Prix de la formation",
+            "2)": "Entreprise cliente bénéficiaire",
+            "": "Responsable du client",
+            "": "Siret du client",
+            "": "Fonction du responsable client",
+            "": "Nom stagiaire",
+            "": "Prénom stagiaire",
+            "": "Adresse stagiaire",
+            "": "Date de naissance du stagiaire",
+            "": "Ville de naissance du stagiaire",
+            "": "Pays de naissance du stagiaire",
+            "": "Nationalité du stagiaire",
+            "": "Code postal du candidat/entreprise",
+            "": "Ville du stagiaire",
+            "": "Pays du stagiaire",
+            "": "Téléphone de contact du stagiaire",
+            "": "Email du stagiaire",
+            "": "Date actualisation de vos documents  (Indiquez mois/année)",
+            "": "Code postal organisme de formation",
+            "": "Facebook  (Mettre le lien direct)",
+            "": "LinkedIn  (Mettre le lien direct)",
+            "": "Twitter of",
+            "": "Instagram  (Mettre le lien direct)",
+            "": "Qualification du formateur",
+            "": "Nombre de jours de la formation",
+            "": "Date de la signature du contrat/convention",
+            "": "Public visé",
+            "": "Statut juridique de votre organisme de formation",
+            "": "Année",
+            "": "[NOM(S) DU/des STAGIAIRE(s)]",
+            "": "Effectif stagiaires",
+            "": "Date de la fin de la formation",
         }
 
     def extract_text_from_pdf(self, pdf_file) -> str:
@@ -104,8 +142,11 @@ class PDFExtractor:
         extracted_data = {}
 
         for keyword, description in self.extraction_fields.items():
-            value = self.find_text_after_keyword(text, keyword)
-            extracted_data[description] = value if value else "Non trouvé"
+            if keyword != "":
+                value = self.find_text_after_keyword(text, keyword)
+                extracted_data[description] = value if value else "Non trouvé"
+            else:
+                extracted_data[description] = "Non défini"
 
         return extracted_data
 
@@ -126,19 +167,6 @@ class PDFExtractor:
             csv_lines.append(f'"{field}","{escaped_value}"')
 
         return "\n".join(csv_lines)
-
-    def export_to_json(self, extracted_data: Dict[str, str]) -> str:
-        """
-        Convert extracted data to JSON format.
-
-        Args:
-            extracted_data: Dictionary with extracted data
-
-        Returns:
-            str: JSON formatted string
-        """
-        import json
-        return json.dumps(extracted_data, ensure_ascii=False, indent=2)
 
 
 def validate_pdf_file(uploaded_file) -> bool:

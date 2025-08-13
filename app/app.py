@@ -288,7 +288,13 @@ def main():
 
                     # Create a DataFrame for better table display and transpose it for horizontal view
                     df_results = pd.DataFrame(list(extracted_data.items()), columns=[
-                                              'Champ', 'Valeur']).set_index('Champ').T
+                                              'Champ', 'Valeur']).set_index('Champ')
+
+                    # Set the same order as extractor.extraction_fields
+                    col_in_common = list(
+                        set(extractor.extraction_fields.values()) & set(df_results.index))
+
+                    df_results = df_results.loc[col_in_common].T
 
                     # Display the transposed table
                     st.dataframe(
